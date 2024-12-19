@@ -10,7 +10,7 @@ import ClientManager from './lib/ClientManager';
 
 const debug = Debug('localtunnel:server');
 
-export default function(opt) {
+export default function (opt) {
     opt = opt || {};
 
     const validHosts = (opt.domain) ? [opt.domain] : undefined;
@@ -18,7 +18,12 @@ export default function(opt) {
     const landingPage = opt.landing || 'https://localtunnel.github.io/www/';
 
     function GetClientIdFromHostname(hostname) {
-        return myTldjs.getSubdomain(hostname);
+        let result = myTldjs.getSubdomain(hostname);
+        if (process.env.NODE_ENV !== 'production' && !result && opt.domain && hostname.endsWith(`.${opt.domain}`)) {
+            result = hostname.substring(0, hostname.length - opt.domain.length - 1);
+        }
+        debug('GetClientIdFromHostname. Hostname: "%s", ClientId: "%s"', hostname, result);
+        return result;
     }
 
     const manager = new ClientManager(opt);
@@ -120,6 +125,7 @@ export default function(opt) {
     server.on('request', (req, res) => {
         // without a hostname, we won't know who the request is for
         const hostname = req.headers.host;
+        debug('request for hostname %s', hostname);
         if (!hostname) {
             res.statusCode = 400;
             res.end('Host header is required');
